@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Untitled 2</title>
+<script type="text/javascript" src="https://excelenciainc.sharepoint.com/sites/DEV/SiteAssets/jquery.min.js"></script>
+<script type="text/javascript" src="https://excelenciainc.sharepoint.com/sites/DEV/SiteAssets/New_Folder/jquery.SPServices.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+var requestUri = _spPageContextInfo.webAbsoluteUrl;
+var userid = _spPageContextInfo.userId;
+$(document).ready(function() {
+debugger;	
+	SP.SOD.executeFunc('clientpeoplepicker.js', 'SPClientPeoplePicker');
+	var prevRadio = $("#q1 .ms-RadioText:eq(0)");
+	$("#q1 .ms-RadioText:gt(0)").appendTo($(prevRadio));	
+	$('input[title="ZipCode Required Field"]').blur(function(){	
+	  var zip = $(this).val();
+	  var city = '';
+	  var state = '';	
+	  //make a request to the google geocode api
+	  $.getJSON('https://maps.googleapis.com/maps/api/geocode/json?address='+zip+'',function(response){
+	    //find the city and state
+	    debugger;
+	    var address_components = response.results[0].address_components;
+	    $.each(address_components, function(index, component){
+	      var types = component.types;
+	      $.each(types, function(index, type){
+	        if(type == 'locality') {
+	          city = component.long_name;
+	        }
+	        if(type == 'administrative_area_level_1') {
+	          state = component.long_name;
+	        }
+	        
+	        if(type == 'country'){
+	          country = component.long_name;
+	        }
+	      });
+	    });
+	
+	    //pre-fill the city and state
+	    $('input[title="City"]').val(city);
+	    $('input[title="State Required Field"]').val(state);
+	    $('input[title="Country Required Field"]').val(country);
+	  });
+	});
+
+	GetCurrentUser();
+});
+function GetCurrentUser() {
+debugger;	
+	var requestHeaders = { "accept" : "application/json;odata=verbose" };	
+	$.ajax({
+	  url : requestUri+ "/_api/web/getuserbyid(" + userid + ")",
+	  contentType : "application/json;odata=verbose",
+	  headers : requestHeaders,
+	  success : function(data){
+	    accountName = data.d.LoginName;
+	    GetManager();
+	  },
+	  error : function(data){
+		alert(error);
+	  }
+	});
+}
+function GetManager(){
+debugger;
+	$.ajax({
+	    url: requestUri + "/_api/SP.UserProfiles.PeopleManager/GetPropertiesFor(accountName=@v)?@v='" + encodeURIComponent(accountName) + "'",
+	    method: "GET",
+	    headers: { "Accept": "application/json; odata=verbose" },
+	    success: function (data) {
+	    	var ManagerName = data.d.UserProfileProperties.results[14].Value;
+	    	if(ManagerName == null || ManagerName == ""){
+	    		return false;
+	    	}
+	    	else{
+			   $().SPServices.SPFindPeoplePicker({
+				   peoplePickerDisplayName: "person",
+				   valueToSet: ManagerName,
+				   checkNames: true
+			   });
+			}
+	    },
+	    error: function (data) {
+	        console.log(JSON.stringify(data));
+	    }
+	});
+}
+</script>
+</body>
+</html>
